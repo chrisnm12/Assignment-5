@@ -1,0 +1,79 @@
+import tester.*;
+interface IFunc<A, R>{
+  R apply(A arg);
+}
+interface IListVisitor<T, R> extends IFunc<ILo<T>, R>{
+  R visitMTLo(MTLo<T> m, R val);
+  R visitConsLo(ConsLo<T> c, R val);
+
+}
+interface ILo<T>{
+  Integer accept(IListVisitor<T, Course> t);
+  T getFirst();
+  ILo getRest();
+  Integer count(Integer val);
+}
+class MTLo<T> implements ILo<T>{
+  public T getFirst(){return null;}
+  public ILo getRest(){return this;}
+  public Integer accept(IListVisitor<T, Course> t) {
+    return new DeepestPathLength().visitMTLo(this, 0);
+  }
+  public Integer count(Integer val) {
+    return 1 + val;
+  }
+}
+class ConsLo<T> implements ILo<T>{
+  T first;
+  ILo<T> rest;
+  ConsLo(T first, ILo<T> rest){
+    this.first = first;
+    this.rest = rest;
+  }
+  public T getFirst(){return this.first;}
+  public ILo getRest(){return this.rest;}
+  public Integer accept(IListVisitor<T, Course> t) {
+    return new DeepestPathLength().visitConsLo(this, 0);
+  }
+  public Integer count(Integer val) {
+    return rest.count(1 + val);
+  }
+}
+class DeepestPathLength<T> implements IListVisitor<T, Integer>{
+  public Integer visitMTLo(MTLo<T> m, Integer val){
+    return m.count(val);
+  }
+
+  public Integer visitConsLo(ConsLo<T> c, Integer val) {
+    return c.rest.count(val + 1);
+  }
+
+  public Integer apply(ILo l){return l.accept(this);}
+
+}
+class Course{
+  String name;
+  ILo<Course> prereqs;
+  Course(String name, ILo<Course> prereqs){
+    this.name = name;
+    this.prereqs = prereqs;
+  }
+  Integer getDeepestPath(){
+    return this.prereqs.accept(new DeepestPathLength<>());
+  }
+}
+
+class ExampleCourses{
+  Course csas3 = new Course("csas 3",
+    new ConsLo<Course>(new Course("Csas 2",
+      new MTLo<Course>()),
+      new ConsLo<Course>(new Course("Csas 1",
+        new MTLo<Course>()), new MTLo<Course>())));
+  Course coffeemaker = new Course("Coffee Making 101",
+    new ConsLo<Course>(new Course("Coffee History",
+      new ConsLo<Course>(new Course("Coffee Bean Analysis", new MTLo<Course>()),
+      new MTLo<Course>())),
+      new ConsLo<Course>(new Course("how to be good with customers", new MTLo<Course>()), new MTLo<Course>())));
+
+  //boolean testhasLongestPath
+}
