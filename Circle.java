@@ -1,65 +1,100 @@
 import javalib.funworld.World;
-import javalib.funworld.WorldScene;
 import javalib.worldimages.*;
 import tester.Tester;
 
 import java.awt.*;
-class MyPosn extends Posn {
+import java.util.Random;
 
-  // standard constructor
+class MyPosn extends Posn {
   MyPosn(int x, int y) {
     super(x, y);
   }
-
-  // constructor to convert from a Posn to a MyPosn
   MyPosn(Posn p) {
     this(p.x, p.y);
   }
-
-  // Method to add another MyPosn and return a new MyPosn
-  MyPosn add(MyPosn other) {
-    int newX = this.x + other.x;
-    int newY = this.y + other.y;
-    return new MyPosn(newX, newY);
-  }
-
-  // Method to check if the position is offscreen
   boolean isOffscreen(int screenWidth, int screenHeight) {
-    return (x < 0 || x >= screenWidth || y < 0 || y >= screenHeight);
+    return (x < -250 || x > 250 || y < 0 || y > screenHeight);
   }
 }
 
 public class Circle {
-  MyPosn position; // in pixels
-  MyPosn velocity; // in pixels/tick
+  MyPosn position;
+  MyPosn velocity;
   Color color;
   int radius;
-
-  Circle(MyPosn position, MyPosn velocity, Color color, int radius) {
+  int n;
+  Circle(MyPosn position, MyPosn velocity, Color color, int radius, int n) {
     this.position = position;
     this.velocity = velocity;
     this.color = color;
     this.radius = radius;
+    this.n = n;
   }
 
-  Circle move() {
-    MyPosn newPosition = position.add(velocity);
-    return new Circle(newPosition, velocity, color, radius);
-  }
   boolean isCenterOffscreen(int screenWidth, int screenHeight) {
     return position.isOffscreen(screenWidth, screenHeight);
   }
+
   WorldImage draw() {
     return new CircleImage(this.radius, OutlineMode.SOLID, this.color)
       .movePinhole(this.position.x, this.position.y);
   }
-  void place(WorldScene scene) {
-    scene.placeImageXY(this.draw(), this.position.x, this.position.y);
+
+  Circle moveX() {
+    MyPosn newPosition = new MyPosn(this.position.x + this.velocity.x, this.position.y);
+    return new Circle(newPosition, this.velocity, this.color, this.radius, this.n);
   }
-  void placeAll(ILoCircle circles, WorldScene scene) {
-    if (!circles.isEmpty()) {
-      circles.getFirst().place(scene); // Place the first circle
-      placeAll(circles.getRest(), scene); // Recursively place the rest of the circles
+
+  Circle moveY() {
+    MyPosn newPosition = new MyPosn(this.position.x, this.position.y + this.velocity.y);
+    return new Circle(newPosition, this.velocity, this.color, this.radius, this.n);
+  }
+
+  public boolean isHit(Circle ship) {
+    int dx = this.position.x - ship.position.x;
+    int dy = this.position.y - ship.position.y;
+    double distance = Math.sqrt(dx * dx + dy * dy);
+
+    return distance < this.radius + ship.radius;
+  }
+
+  public Circle isHitAny(ILoCircle others) {
+    if (others.isEmpty()) {
+      return null;
+    } else {
+      Circle current = others.getFirst();
+      if (this.isHit(current)) {
+        return current;
+      } else {
+        return this.isHitAny(others.getRest());
+      }
+    }
+  }
+  ILoCircle explode() {
+    return explodeHelper(0, new MtLoCircle());
+  }
+  ILoCircle explodeHelper(int i, ILoCircle explodedBullets) {
+    if (i <= n && n < 5) {
+      double angleIncrement = 360.0 / (n + 1);
+      double angle = i * angleIncrement;
+      double radians = Math.toRadians(angle);
+
+      int xChange = (int) (Math.cos(radians) * 20);
+      int yChange = (int) (Math.sin(radians) * 20);
+
+      MyPosn newVelocity = new MyPosn(xChange, yChange);
+      Circle explodedBullet = new Circle(this.position, newVelocity, this.color, this.grow(), this.n + 1);
+
+      return explodeHelper(i + 1, explodedBullets.append(new ConsLoCircle(explodedBullet, new MtLoCircle())));
+    } else {
+      return explodedBullets;
+    }
+  }
+  int grow() {
+    if (this.radius < 12) {
+      return this.radius + 2;
+    } else {
+      return this.radius;
     }
   }
 }
@@ -67,10 +102,11 @@ public class Circle {
 
 class CircleExamples {
   boolean testBigBang(Tester t) {
-    World w = new World();
+    World w = new StartingWorld(10, new Random());
     int worldWidth = 500;
     int worldHeight = 300;
-    double tickRate = 1;
+    double tickRate = 0.0357142857;
     return w.bigBang(worldWidth, worldHeight, tickRate);
   }
+  // Ran out of time for tests unfortunately...
 }

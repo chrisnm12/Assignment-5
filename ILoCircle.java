@@ -1,16 +1,19 @@
+import javalib.worldimages.EmptyImage;
+import javalib.worldimages.WorldImage;
 
-interface ILoCircle {
-  ILoCircle moveAll();
+public interface ILoCircle {
+  ILoCircle moveAllBullets();
+  ILoCircle moveAllShips();
   boolean isEmpty();
   Circle getFirst();
   ILoCircle getRest();
   ILoCircle removeOffscreen(int screenWidth, int screenHeight);
+  WorldImage drawAll();
+  ILoCircle removeHit(Circle other);
+  ILoCircle append(ILoCircle other);
 }
 
 class MtLoCircle implements ILoCircle {
-  public ILoCircle moveAll() {
-    return this;
-  }
   public boolean isEmpty() {
     return true;
   }
@@ -23,6 +26,21 @@ class MtLoCircle implements ILoCircle {
   public ILoCircle removeOffscreen(int screenWidth, int screenHeight) {
     return this;
   }
+  public WorldImage drawAll() {
+    return new EmptyImage();
+  }
+  public ILoCircle removeHit(Circle other) {
+    return this;
+  }
+  public ILoCircle moveAllBullets() {
+    return this;
+  }
+  public ILoCircle moveAllShips() {
+    return this;
+  }
+  public ILoCircle append(ILoCircle other) {
+    return other;
+  }
 }
 
 class ConsLoCircle implements ILoCircle {
@@ -32,9 +50,6 @@ class ConsLoCircle implements ILoCircle {
   ConsLoCircle(Circle first, ILoCircle rest) {
     this.first = first;
     this.rest = rest;
-  }
-  public ILoCircle moveAll() {
-    return new ConsLoCircle(this.first.move(), this.rest.moveAll());
   }
   public boolean isEmpty() {
     return false;
@@ -46,13 +61,30 @@ class ConsLoCircle implements ILoCircle {
     return this.rest;
   }
   public ILoCircle removeOffscreen(int screenWidth, int screenHeight) {
-    // Check if the first circle is offscreen
     if (first.isCenterOffscreen(screenWidth, screenHeight)) {
-      // Recursively remove offscreen circles from the rest of the list
       return rest.removeOffscreen(screenWidth, screenHeight);
     } else {
-      // Keep the first circle and process the rest of the list
       return new ConsLoCircle(first, rest.removeOffscreen(screenWidth, screenHeight));
     }
   }
+  public WorldImage drawAll() {
+    return this.first.draw().overlayImages(this.rest.drawAll());
+  }
+  public ILoCircle moveAllBullets() {
+    return new ConsLoCircle(first.moveY().moveX(), rest.moveAllBullets());
+  }
+  public ILoCircle moveAllShips() {
+    return new ConsLoCircle(first.moveX(), rest.moveAllShips());
+  }
+  public ILoCircle removeHit(Circle other) {
+    if (other.isHit(this.first)) {
+      return this.rest.removeHit(other);
+    } else {
+      return new ConsLoCircle(this.first, this.rest.removeHit(other));
+    }
+  }
+  public ILoCircle append(ILoCircle other) {
+    return new ConsLoCircle(this.first, this.rest.append(other));
+  }
 }
+
